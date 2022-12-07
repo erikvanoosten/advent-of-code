@@ -1,3 +1,5 @@
+# https://adventofcode.com/2022/day/1
+
 # Part 1
 
 cat src/main/resources/y2022/input-day1.txt | \

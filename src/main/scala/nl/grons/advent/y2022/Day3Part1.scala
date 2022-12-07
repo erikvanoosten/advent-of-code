@@ -6,6 +6,9 @@ import zio.{Scope, ZIO, ZIOAppArgs, ZIOAppDefault}
 
 import java.io.File
 
+/**
+ * See [[https://adventofcode.com/2022/day/3]].
+ */
 object Day3Part1 extends ZIOAppDefault {
 
   def itemPriority(item: Char): Int = {

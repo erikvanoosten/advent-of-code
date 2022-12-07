@@ -6,6 +6,9 @@ import zio.{Scope, ZIO, ZIOAppArgs, ZIOAppDefault}
 
 import java.io.File
 
+/**
+ * See [[https://adventofcode.com/2022/day/2]].
+ */
 object Day2Part1 extends ZIOAppDefault {
 
   abstract class RPS(val value: Int)

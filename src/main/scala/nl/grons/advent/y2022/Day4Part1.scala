@@ -7,6 +7,9 @@ import zio.{Scope, ZIO, ZIOAppArgs, ZIOAppDefault}
 import java.io.File
 import scala.collection.immutable.BitSet
 
+/**
+ * See [[https://adventofcode.com/2022/day/4]].
+ */
 object Day4Part1 extends ZIOAppDefault {
 
   case class AreaIdRange(ids: Range) {
