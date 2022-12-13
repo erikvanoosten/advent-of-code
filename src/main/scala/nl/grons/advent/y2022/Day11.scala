@@ -47,7 +47,7 @@ object Day11 extends ZIOAppDefault {
     }
     object Monkey {
       def fromString(lines: Seq[String]): Monkey = {
-        assert(lines.size == 6 || (lines.size == 7 && lines(6).isEmpty))
+        assert(lines.size == 6)
         val id = lines.head.drop(7).dropRight(1).toInt
         val items = lines(1).drop(18).split(',').map(s => BigInt(s.trim))
         val operationStr = lines(2).drop(19)
@@ -60,7 +60,7 @@ object Day11 extends ZIOAppDefault {
 
     val inputMonkeys: Seq[Monkey] = input
       .linesIterator
-      .grouped(7)
+      .sliding(6, 7)
       .map(Monkey.fromString)
       .toIndexedSeq
 
