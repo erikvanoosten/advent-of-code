@@ -7,15 +7,13 @@ import scala.annotation.tailrec
 
 /**
  * See [[https://adventofcode.com/2022/day/17]].
- *
- * WARNING: solves part 2 only for the example input, not for the actual input.
  */
 object Day17 extends ZIOAppDefault {
 
   override def run: ZIO[Any with ZIOAppArgs with Scope, Any, Any] = {
-    val input1 = Files.readString(Path.of("src/main/resources/y2022/input-day17.txt")).strip()
+    val input = Files.readString(Path.of("src/main/resources/y2022/input-day17.txt")).strip()
 
-    val input = """>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>"""
+    val input1 = """>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>"""
 
     val rocks: Seq[Seq[Int]] = Seq(
       Seq(
@@ -130,62 +128,82 @@ object Day17 extends ZIOAppDefault {
     // Part 2
 
     def dropRocks2(rockCount: Long): Long = {
-      // !!!!!! WARNING !!!!!!
+      // Since:
+      //  - rock shapes repeat after all 5 rock shapes have dropped
+      //  - jets repeat after input.size pushes
+      // repetition will occur at some moment a multiple of 5 rockets have dropped and
+      // a multiple of input.size jets have pushed.
       //
-      // Part 2 works fine for the example input.
-      // Unfortunately, it does not find any repetition for the actual input.
+      // Complications:
+      //  - just above the floor the rock behave differently
+      //  - we don't know after which multiple of 5 the repetition starts
       //
-      // Apparently the replication does not occur on the investigated boundaries.
-      //
-      // Suspect is that after using all jets, we have not dropped an exact number
-      // of rocks (and definitely not a plural of 5). The same is true after
-      // using 5 * number of jets.
-      //
-      // END OF WARNING
-
-      // Repetition can only occur after we have dropped n * rocks.size rocks.
-      //
-      // We'll first drop a bunch of rucks to lay a foundation.
-      // Then we'll drop all rock shapes until we see repetition.
+      // Solution:
+      //  - first drop a bunch of rocks to lay a foundation
+      //  - continue to drop 5 rocks, while keeping track of the jet count and chamber height
+      //  - until we see a multiple of 5 rocks that used a multiple of input.size jet pushes AND
+      //    has the same settled rocks twice
 
       val jets: CountingIterator[Char] = new CountingIterator(infiniteJetStream())
 
       // Lay a base
-      val baseRockCount = 20 * rocks.size
+      val baseRockCount = 10 * rocks.size
       val baseChamber = dropRocks(emptyChamber, rockStream(baseRockCount), jets)
-      val baseChamberH = chamberHeight(baseChamber)
       val baseChamberJets = jets.iterCount()
+      val baseChamberH = chamberHeight(baseChamber)
+
+      // Explore base extensions
+      case class BaseChamber(rockCount: Int, jetCount: Int, height: Int)
+      var extendedBaseChambers: Vector[BaseChamber] =
+        Vector(BaseChamber(baseRockCount, baseChamberJets, baseChamberH))
 
       // Find the number of rocks to drop for the assumed repetition
-      var repetitionChamber = baseChamber
-      var repetitionRockCount = 0
-      var repetitionFound = false
+      var extensionChamber = baseChamber
+      var extensionRockCount = baseRockCount
+      var repetitionFound: Option[BaseChamber] = None
       do {
-        repetitionChamber = dropRocks(repetitionChamber, rockStream(rocks.size), jets)
-        repetitionRockCount += rocks.size
-        val repetitionChamberH = chamberHeight(repetitionChamber)
-        val repetitionChamberHDelta = repetitionChamberH - baseChamberH
-        val repetitionChamberPart1 = Range(baseChamberH - 20, baseChamberH + repetitionChamberHDelta / 2 - 20).map(repetitionChamber)
-        val repetitionChamberPart2 = Range(baseChamberH + repetitionChamberHDelta / 2 - 20, repetitionChamberH - 20).map(repetitionChamber)
-        repetitionFound = repetitionChamberPart1 == repetitionChamberPart2
-        if (repetitionRockCount % 1000 == 0) println(s"at $repetitionRockCount rocks")
-      } while (!repetitionFound)
-      val repetitionChamberH = chamberHeight(repetitionChamber)
-      val repetitionChamberHDelta = repetitionChamberH - baseChamberH
+        extensionChamber = dropRocks(extensionChamber, rockStream(rocks.size), jets)
+        extensionRockCount += rocks.size
+        val extensionChamberHeight = chamberHeight(extensionChamber)
+        val extensionJetCount = jets.iterCount()
 
-      println(s"Repetition after $repetitionRockCount rocks and ${jets.iterCount() - baseChamberJets} jets")
+        repetitionFound = extendedBaseChambers.find { extended =>
+          ((extensionJetCount - extended.jetCount) % input.length == 0) && {
+            val extensionDeltaHalfHeight = (extensionChamberHeight - extended.height) / 2
+            val bottomPart = Range(extended.height - 20, extended.height + extensionDeltaHalfHeight - 20).map(extensionChamber)
+            val topPart = Range(extended.height + extensionDeltaHalfHeight - 20, extensionChamberHeight - 20).map(extensionChamber)
+            bottomPart == topPart
+          }
+        }
+        extendedBaseChambers = extendedBaseChambers :+ BaseChamber(extensionRockCount, extensionJetCount, extensionChamberHeight)
+      } while (repetitionFound.isEmpty)
 
-      val repeatCount: Long = (rockCount - baseRockCount) / repetitionRockCount
-      val projectedChamberH: Long = repeatCount * repetitionChamberHDelta
+      val repetitionBase = repetitionFound.get
 
-      val stillToDrop: Long = rockCount - baseRockCount - (repeatCount * repetitionRockCount)
+      val beforeRepetitionRockCount = repetitionBase.rockCount
+      val repetitionSizeInRocks = extensionRockCount - beforeRepetitionRockCount
+
+      val repetitionSizeInJets = jets.iterCount() - repetitionBase.jetCount
+
+      val beforeRepetitionChamberHeight = repetitionBase.height
+      val afterRepetitionChamberHeight = chamberHeight(extensionChamber)
+      val repetitionSizeInHeight = afterRepetitionChamberHeight - beforeRepetitionChamberHeight
+
+      println(s"Found a repetition of $repetitionSizeInRocks rocks and $repetitionSizeInJets jets")
+      println(s"Base chamber height is $beforeRepetitionChamberHeight")
+      println(s"Repetition height is $repetitionSizeInHeight")
+
+      val repeatCount: Long = (rockCount - beforeRepetitionRockCount) / repetitionSizeInRocks
+      val projectedChamberH: Long = repeatCount * repetitionSizeInHeight
+
+      val stillToDrop: Long = rockCount - beforeRepetitionRockCount - (repeatCount * repetitionSizeInRocks)
       assert(stillToDrop < Int.MaxValue)
-      val afterChamber = dropRocks(repetitionChamber, rockStream(stillToDrop.toInt), jets)
-      val afterChamberHDelta = chamberHeight(afterChamber) - repetitionChamberH
+      val afterChamber = dropRocks(extensionChamber, rockStream(stillToDrop.toInt), jets)
+      val afterChamberHDelta = chamberHeight(afterChamber) - afterRepetitionChamberHeight
 
-      assert(baseRockCount + repeatCount * repetitionRockCount + stillToDrop == rockCount)
+      assert(beforeRepetitionRockCount + repeatCount * repetitionSizeInRocks + stillToDrop == rockCount)
 
-      baseChamberH + projectedChamberH + afterChamberHDelta
+      beforeRepetitionChamberHeight + projectedChamberH + afterChamberHDelta
     }
 
     val resultPart1 = dropRocks1(2022)
@@ -193,7 +211,7 @@ object Day17 extends ZIOAppDefault {
     val resultPart2 = dropRocks2(1000000000000L)
 
     zio.Console.printLine("Result part 1: " + resultPart1) *> // 3206
-      zio.Console.printLine("Result part 2: " + resultPart2) //
+      zio.Console.printLine("Result part 2: " + resultPart2) // 1602881844347
   }
 
   class CountingIterator[A](wrapped: Iterator[A]) extends Iterator[A] {
