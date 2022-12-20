@@ -81,27 +81,24 @@ object Day18 extends ZIOAppDefault {
             } else {
               // Use flood fill to find all holes that touch v, stop when we get out of range or hit a voxel
               @tailrec
-              def flood(discovered: Set[Voxel], alreadyFlooded: Set[Voxel], exposed: Boolean): (Set[Voxel], Boolean) = {
-                val xLines: Set[Voxel] = discovered.flatMap { h =>
+              def flood(discovered: Set[Voxel], alreadyFlooded: Set[Voxel]): (Set[Voxel], Boolean) = {
+                val expandLines: Set[Voxel] = discovered.flatMap { h =>
                   Iterator.from(h.x, -1).takeWhile(xRange.contains).map(x => h.copy(x = x)).takeWhile(v => !voxels.contains(v)) ++
-                    Iterator.from(h.x).takeWhile(xRange.contains).map(x => h.copy(x = x)).takeWhile(v => !voxels.contains(v))
-                }
-                val yLines: Set[Voxel] = discovered.flatMap { h =>
-                  Iterator.from(h.y, -1).takeWhile(yRange.contains).map(y => h.copy(y = y)).takeWhile(v => !voxels.contains(v)) ++
-                    Iterator.from(h.y).takeWhile(yRange.contains).map(y => h.copy(y = y)).takeWhile(v => !voxels.contains(v))
-                }
-                val zLines: Set[Voxel] = discovered.flatMap { h =>
-                  Iterator.from(h.z, -1).takeWhile(zRange.contains).map(z => h.copy(z = z)).takeWhile(v => !voxels.contains(v)) ++
+                    Iterator.from(h.x).takeWhile(xRange.contains).map(x => h.copy(x = x)).takeWhile(v => !voxels.contains(v)) ++
+                    Iterator.from(h.y, -1).takeWhile(yRange.contains).map(y => h.copy(y = y)).takeWhile(v => !voxels.contains(v)) ++
+                    Iterator.from(h.y).takeWhile(yRange.contains).map(y => h.copy(y = y)).takeWhile(v => !voxels.contains(v)) ++
+                    Iterator.from(h.z, -1).takeWhile(zRange.contains).map(z => h.copy(z = z)).takeWhile(v => !voxels.contains(v)) ++
                     Iterator.from(h.z).takeWhile(zRange.contains).map(z => h.copy(z = z)).takeWhile(v => !voxels.contains(v))
                 }
-                val newlyDiscoveredHoles: Set[Voxel] = (xLines -- alreadyFlooded) ++ (yLines -- alreadyFlooded) ++ (zLines -- alreadyFlooded)
-                val expandedNext = alreadyFlooded ++ discovered
-                val exposedNext = exposed || xLines.exists(edgeVoxel) || yLines.exists(edgeVoxel) || zLines.exists(edgeVoxel)
-                if (newlyDiscoveredHoles.isEmpty) (alreadyFlooded, exposedNext)
-                else flood(newlyDiscoveredHoles, expandedNext, exposedNext)
+                val newlyDiscoveredHoles: Set[Voxel] = expandLines -- alreadyFlooded
+                val alreadyFloodedUpdate = alreadyFlooded ++ discovered
+                val exposed = expandLines.exists(edgeVoxel)
+                if (exposed) (alreadyFloodedUpdate, true)
+                else if (newlyDiscoveredHoles.isEmpty) (alreadyFloodedUpdate, false)
+                else flood(newlyDiscoveredHoles, alreadyFloodedUpdate)
               }
 
-              val (reached, exposed) = flood(Set(v), Set.empty, exposed = false)
+              val (reached, exposed) = flood(Set(v), Set.empty)
               if (exposed) (enclosedHoles, exposedHoles ++ reached)
               else (enclosedHoles ++ reached, exposedHoles)
             }
