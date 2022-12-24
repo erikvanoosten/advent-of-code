@@ -8,6 +8,9 @@ import java.nio.file.{Files, Path}
 
 /**
  * See [[https://adventofcode.com/2022/day/22]].
+ *
+ * Warning: this solution is not generic. It only works for the example input
+ * and inputs with the same shape of what is in "src/main/resources/y2022/input-day22.txt".
  */
 object Day22 extends ZIOAppDefault {
 

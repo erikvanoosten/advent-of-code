@@ -9,7 +9,9 @@ import scala.collection.mutable
  * See [[https://adventofcode.com/2022/day/19]].
  *
  * NOTE: part 2 takes a substantial time to run!
- * To make this app go faster, please give it large heap, e.g. -Xmx4g will do.
+ * To make this app go faster, please give it large heap. `-Xmx4g` will do, more is better.
+ *
+ * To run it on your own input you may have to fix the bug mentioned on line 203.
  */
 object Day19 extends ZIOAppDefault {
 
